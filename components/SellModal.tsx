@@ -69,7 +69,9 @@ const handleSubmit = async (e: React.FormEvent) => {
       seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
       contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
       status: 'active',
-      created_at:Date.now()
+    
+
+        
 
     if (error) throw error;
     alert('تم نشر المنتج بنجاح!');
