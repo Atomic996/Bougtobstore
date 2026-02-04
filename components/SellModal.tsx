@@ -44,50 +44,43 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
     setStatusMessage('');
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!imagePreview) { alert('الرجاء اختيار صورة'); return; }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  setStatusMessage('جاري فحص المنتج بواسطة الذكاء الاصطناعي...');
 
-    setIsSubmitting(true);
-    setStatusMessage('جاري المعالجة...');
+  try {
+    // استدعاء الفحص
+    const safety = await checkProductSafety(title, description, imagePreview!);
 
-    try {
-      const safety = await checkProductSafety(title, description, imagePreview);
-      
-      // التعديل هنا: نتحقق من وجود القيمة بوضوح
-      if (safety && safety.isSafe === false) {
-        alert(`عذراً، تم رفض المنتج: ${safety.reason || "محتوى مخالف"}`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      const newProduct = {
-        title: title,
-        description: description,
-        price: Number(price),
-        category: category,
-        image_url: imagePreview, 
-        seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
-        seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
-        contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
-        status: 'active',
-        created_at: Date.now()
-      };
-
-      const { error } = await supabase.from(TABLE_NAME).insert([newProduct]);
-
-      if (error) throw error;
-
-      alert('✅ تم النشر بنجاح!');
-      onSave();
-      onClose();
-    } catch (err: any) {
-      alert(`فشل النشر: ${err.message || "تأكد من إعدادات قاعدة البيانات"}`);
-    } finally {
+    if (!safety.isSafe) {
+      alert(`عذراً، تم رفض المنتج: ${safety.reason}`);
       setIsSubmitting(false);
-      setStatusMessage('');
+      return;
     }
-  };
+
+    // إذا كان آمناً، يتم الإكمال إلى Supabase
+    const { error } = await supabase.from(TABLE_NAME).insert([{
+      title,
+      description,
+      price: Number(price),
+      image_url: imagePreview,
+      seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
+      seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
+      contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
+      status: 'active',
+      created_at:Date.now()
+
+    if (error) throw error;
+    alert('تم نشر المنتج بنجاح!');
+    onClose();
+  } catch (err) {
+    alert('حدث خطأ أثناء النشر');
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
