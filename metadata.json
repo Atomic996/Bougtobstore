@@ -1,0 +1,7 @@
+{
+  "name": "Bougtob Store - سوق الجزائر",
+  "description": "منصة بوجطوب المتطورة لبيع وشراء المنتجات في الجزائر مع حماية فائقة بالذكاء الاصطناعي.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
