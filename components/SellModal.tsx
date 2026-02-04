@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Category, Product } from '../types';
-import { checkProductSafety } from 'geminiService';
+import { checkProductSafety } from './geminiService';
 import { checkLocalProfanity } from '../lib/moderation';
 import { supabase, BUCKET_NAME, TABLE_NAME, SUPABASE_CONFIGURED } from '../lib/supabase';
 
