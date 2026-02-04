@@ -73,8 +73,8 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
         price: Number(price),
         category,
         image_url: imagePreview,
-        sellerName: localStorage.getItem('bougtob_seller_name') || 'بائع بوجطوب',
-        sellerId: localStorage.getItem('bougtob_seller_id') || `user_${Math.random().toString(36).substr(2, 9)}`,
+        seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع بوجطوب',
+        seller_id: localStorage.getItem('bougtob_seller_id') || `user_${Math.random().toString(36).substr(2, 9)}`,
         contactInfo: JSON.stringify({ type: contactMethod, value: contactValue }),
         status: 'active',
         createdAt: Date.now()
