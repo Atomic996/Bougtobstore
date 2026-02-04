@@ -72,7 +72,7 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
         description,
         price: Number(price),
         category,
-        imageUrl: imagePreview,
+        image_url: imagePreview,
         sellerName: localStorage.getItem('bougtob_seller_name') || 'بائع بوجطوب',
         sellerId: localStorage.getItem('bougtob_seller_id') || `user_${Math.random().toString(36).substr(2, 9)}`,
         contactInfo: JSON.stringify({ type: contactMethod, value: contactValue }),
