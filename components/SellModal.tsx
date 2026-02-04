@@ -42,55 +42,49 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
     setImagePreview(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!imagePreview) {
-      alert('الرجاء اختيار صورة');
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!imagePreview) { alert('الرجاء اختيار صورة'); return; }
 
-    setIsSubmitting(true);
-    setStatusMessage('جاري فحص المنتج بواسطة الذكاء الاصطناعي...');
+  setIsSubmitting(true);
+  setStatusMessage('جاري فحص المحتوى بصرامة...');
 
-    try {
-      // 1. استدعاء فحص AI
-      const safety = await checkProductSafety(title, description, imagePreview);
+  try {
+    // 1. استدعاء الفحص (يجب أن يكون ملف geminiService محدثاً بكود الصور)
+    const safety = await checkProductSafety(title, description, imagePreview);
 
-      if (!safety.isSafe) {
-        alert(`❌ عذراً، تم رفض المنتج: ${safety.reason}`);
-        setIsSubmitting(false);
-        return;
-      }
-
-      setStatusMessage('جاري نشر المنتج في السوق...');
-
-      // 2. إرسال البيانات لـ Supabase (تم إصلاح الأقواس هنا)
-      const { error } = await supabase.from(TABLE_NAME).insert([{
-        title,
-        description,
-        price: Number(price),
-        category,
-        image_url: imagePreview,
-        seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
-        seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
-        contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
-        status: 'active',
-        created_at: new Date().toISOString()
-      }]);
-
-      if (error) throw error;
-
-      alert('✅ تم نشر منتجك بنجاح!');
-      resetForm();
-      onSave();
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      alert('حدث خطأ أثناء النشر: ' + err.message);
-    } finally {
+    // 2. القفل الصارم: إذا لم تكن النتيجة (Safe) نوقف كل شيء
+    if (!safety || safety.isSafe !== true) {
+      alert(`❌ تم حظر هذا المحتوى: ${safety?.reason || "محتوى غير لائق"}`);
       setIsSubmitting(false);
+      return; // هذا السطر يمنع الكود من الوصول إلى Supabase
     }
-  };
+
+    // 3. النشر يتم فقط وفقط إذا تجاوز الفحص
+    const { error } = await supabase.from(TABLE_NAME).insert([{
+      title,
+      description,
+      price: Number(price),
+      category,
+      image_url: imagePreview,
+      seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
+      seller_id: localStorage.getItem('bougtob_seller_id'),
+      contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
+      status: 'active',
+      created_at: new Date().toISOString()
+    }]);
+
+    if (error) throw error;
+
+    alert('✅ تم التحقق والنشر بنجاح');
+    onSave();
+    onClose();
+  } catch (err: any) {
+    alert('حدث خطأ فني: ' + err.message);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
