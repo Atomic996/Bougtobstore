@@ -75,7 +75,7 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
         seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
         contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
         status: 'active',
-        created_at: Date.now()
+        created_at: Date().toISOString()
       }]);
 
       if (error) throw error;
