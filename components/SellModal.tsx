@@ -29,6 +29,7 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
       const reader = new FileReader();
       reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
+    
     }
   };
 
@@ -45,64 +46,43 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!imagePreview) {
-      alert('الرجاء اختيار صورة للمنتج');
-      return;
-    }
+    if (!imagePreview) { alert('الرجاء اختيار صورة'); return; }
 
     setIsSubmitting(true);
-    setStatusMessage('جاري الفحص والإرسال...');
+    setStatusMessage('جاري المعالجة...');
 
     try {
-      // 1. الفحص الأمني عبر Hugging Face
-      console.log("بدء عملية الفحص...");
       const safety = await checkProductSafety(title, description, imagePreview);
       
-      if (!safety.isSafe) {
-        alert(`❌ تم رفض المنتج: ${safety.reason || "محتوى مخالف"}`);
+      // التعديل هنا: نتحقق من وجود القيمة بوضوح
+      if (safety && safety.isSafe === false) {
+        alert(`عذراً، تم رفض المنتج: ${safety.reason || "محتوى مخالف"}`);
         setIsSubmitting(false);
         return;
       }
 
-      setStatusMessage('جاري الحفظ في قاعدة البيانات...');
-
-      // 2. تجهيز البيانات (تطابق تام مع أعمدة Supabase التي ذكرتها)
       const newProduct = {
         title: title,
         description: description,
         price: Number(price),
         category: category,
-        image_url: imagePreview, // الحقل الذي أكدت وجوده
+        image_url: imagePreview, 
         seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
-        seller_id: localStorage.getItem('bougtob_seller_id') || `user_${Math.random().toString(36).substr(2, 9)}`,
+        seller_id: localStorage.getItem('bougtob_seller_id') || 'guest',
         contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
         status: 'active',
         created_at: Date.now()
       };
 
-      console.log("البيانات المرسلة:", newProduct);
+      const { error } = await supabase.from(TABLE_NAME).insert([newProduct]);
 
-      // 3. الإرسال لـ Supabase مع تتبع الخطأ
-      const { data, error } = await supabase
-        .from(TABLE_NAME)
-        .insert([newProduct])
-        .select();
+      if (error) throw error;
 
-      if (error) {
-        // إذا كان هناك خطأ في أسماء الأعمدة أو الصلاحيات ستظهر هنا
-        console.error("خطأ Supabase:", error);
-        throw new Error(`[خطأ Supabase]: ${error.message} (كود: ${error.code})`);
-      }
-
-      alert('✅ مبروك! تم نشر منتجك بنجاح.');
-      resetForm();
+      alert('✅ تم النشر بنجاح!');
       onSave();
       onClose();
-
     } catch (err: any) {
-      console.error('فشل العملية:', err);
-      // نافذة التنبيه هذه ستخبرك بالضبط أين المشكلة
-      alert(`عذراً، حدث خطأ تقني:\n${err.message}`);
+      alert(`فشل النشر: ${err.message || "تأكد من إعدادات قاعدة البيانات"}`);
     } finally {
       setIsSubmitting(false);
       setStatusMessage('');
