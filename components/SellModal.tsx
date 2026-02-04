@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Category, Product } from '../types';
-import { checkProductSafety } from './geminiService'; // تأكد أن هذا الملف يحتوي على كود Hugging Face الجديد
+import { checkProductSafety } from './geminiService'; // تأكد أن ملف geminiService يحتوي على كود Hugging Face
 import { supabase, TABLE_NAME } from '../lib/supabase';
 
 interface SellModalProps {
@@ -51,47 +51,58 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
     }
 
     setIsSubmitting(true);
-    setStatusMessage('جاري فحص المنتج بالذكاء الاصطناعي...');
+    setStatusMessage('جاري الفحص والإرسال...');
 
     try {
-      // 1. الفحص الأمني (Hugging Face)
+      // 1. الفحص الأمني عبر Hugging Face
+      console.log("بدء عملية الفحص...");
       const safety = await checkProductSafety(title, description, imagePreview);
-
+      
       if (!safety.isSafe) {
-        alert(`عذراً، تم رفض المنتج: ${safety.reason || "محتوى غير مسموح به"}`);
+        alert(`❌ تم رفض المنتج: ${safety.reason || "محتوى مخالف"}`);
         setIsSubmitting(false);
-        setStatusMessage('');
         return;
       }
 
-      setStatusMessage('جاري النشر في السوق...');
+      setStatusMessage('جاري الحفظ في قاعدة البيانات...');
 
-      // 2. تجهيز بيانات المنتج للـ Supabase
+      // 2. تجهيز البيانات (تطابق تام مع أعمدة Supabase التي ذكرتها)
       const newProduct = {
-        title,
-        description,
+        title: title,
+        description: description,
         price: Number(price),
-        category,
-        image_url: imagePreview,
-        seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع بوجطوب',
+        category: category,
+        image_url: imagePreview, // الحقل الذي أكدت وجوده
+        seller_name: localStorage.getItem('bougtob_seller_name') || 'بائع مجهول',
         seller_id: localStorage.getItem('bougtob_seller_id') || `user_${Math.random().toString(36).substr(2, 9)}`,
-        contactInfo: JSON.stringify({ type: contactMethod, value: contactValue }),
+        contact_info: JSON.stringify({ type: contactMethod, value: contactValue }),
         status: 'active',
-        createdAt: Date.now()
+        created_at: Date.now()
       };
 
-      // 3. الإدراج في قاعدة البيانات
-      const { error } = await supabase.from(TABLE_NAME).insert([newProduct]);
+      console.log("البيانات المرسلة:", newProduct);
 
-      if (error) throw error;
+      // 3. الإرسال لـ Supabase مع تتبع الخطأ
+      const { data, error } = await supabase
+        .from(TABLE_NAME)
+        .insert([newProduct])
+        .select();
 
-      alert('✅ تم نشر منتجك بنجاح!');
+      if (error) {
+        // إذا كان هناك خطأ في أسماء الأعمدة أو الصلاحيات ستظهر هنا
+        console.error("خطأ Supabase:", error);
+        throw new Error(`[خطأ Supabase]: ${error.message} (كود: ${error.code})`);
+      }
+
+      alert('✅ مبروك! تم نشر منتجك بنجاح.');
       resetForm();
       onSave();
       onClose();
+
     } catch (err: any) {
-      console.error('Error saving product:', err);
-      alert('حدث خطأ أثناء الحفظ: ' + (err.message || 'تأكد من إعدادات قاعدة البيانات'));
+      console.error('فشل العملية:', err);
+      // نافذة التنبيه هذه ستخبرك بالضبط أين المشكلة
+      alert(`عذراً، حدث خطأ تقني:\n${err.message}`);
     } finally {
       setIsSubmitting(false);
       setStatusMessage('');
@@ -106,8 +117,8 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Image Upload */}
+        <form onSubmit={handleSubmit} className="space-y-6 text-right" dir="rtl">
+          {/* رفع الصورة */}
           <div 
             onClick={() => fileInputRef.current?.click()}
             className="relative aspect-video rounded-[2rem] bg-[#101625] border-2 border-dashed border-white/10 hover:border-emerald-500/50 transition-all cursor-pointer overflow-hidden flex items-center justify-center"
@@ -138,7 +149,7 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
 
           <select 
             value={category} onChange={e => setCategory(e.target.value as Category)}
-            className="w-full px-6 py-4 rounded-2xl bg-[#101625] text-white border-none focus:ring-2 focus:ring-emerald-500/50"
+            className="w-full px-6 py-4 rounded-2xl bg-[#101625] text-white border-none focus:ring-2 focus:ring-emerald-500/50 appearance-none"
           >
             {Object.values(Category).map(cat => <option key={cat} value={cat}>{cat}</option>)}
           </select>
@@ -154,11 +165,11 @@ const SellModal: React.FC<SellModalProps> = ({ isOpen, onClose, onSave }) => {
                 type="button"
                 onClick={() => setContactMethod('messenger')}
                 className={`flex-1 py-3 rounded-xl font-bold text-xs transition-all ${contactMethod === 'messenger' ? 'bg-blue-600 text-white' : 'bg-white/5 text-slate-400'}`}
-              >مسنجر</button>
+              >رابط مسنجر</button>
             </div>
             <input 
               type="text" required 
-              placeholder={contactMethod === 'phone' ? "0XXXXXXX" : "رابط الحساب"} 
+              placeholder={contactMethod === 'phone' ? "0XXXXXXX" : "رابط الملف الشخصي"} 
               value={contactValue} onChange={e => setContactValue(e.target.value)}
               className="w-full px-6 py-4 rounded-2xl bg-[#050810] text-white border-none" 
             />
